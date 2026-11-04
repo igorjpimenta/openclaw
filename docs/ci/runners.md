@@ -373,7 +373,13 @@ Backend routing still applies. Hybrid retries and fork retries retain their
 hosted routes. Ordinary manual CI dispatches remain hosted in hybrid mode;
 Full Release Validation's existing frozen-target lint exception remains separate.
 Npm preflight uses the larger Blacksmith request by default and retains its
-explicit `use_github_hosted_runners` option.
+explicit `use_github_hosted_runners` option. Full Release Validation forwards
+`npm_preflight_use_github_hosted_runners` through Full Release Artifacts, so one
+release can move its npm preflight jobs to hosted `ubuntu-24.04` without
+changing `OPENCLAW_CI_RUNNER_BACKEND`. The npm source check runs oxlint shards
+one at a time (`OPENCLAW_OXLINT_SHARD_CONCURRENCY=1`): on the delivered
+eight-CPU/31-GiB 32-class, the full core and extension Programs otherwise run
+concurrently, and five 2026.11.5-beta.1 attempts lost their runner there.
 
 Ordinary iOS smoke CI builds the app and embedded Watch targets for the runner's
 architecture, using the same iPhone simulator for compilation and voice-cleanup
