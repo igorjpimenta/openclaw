@@ -181,8 +181,11 @@ export async function resolveGatewayScopedTools(
       modelProvider: params.modelProvider,
       modelId: params.modelId,
     });
-    const profilePolicy = resolveToolProfilePolicy(effective.profile);
-    const providerProfilePolicy = resolveToolProfilePolicy(effective.providerProfile);
+    const profilePolicy = resolveToolProfilePolicy(effective.profile, config.tools?.profiles);
+    const providerProfilePolicy = resolveToolProfilePolicy(
+      effective.providerProfile,
+      config.tools?.profiles,
+    );
     return {
       ...effective,
       profilePolicy,
@@ -361,6 +364,7 @@ export async function resolveGatewayScopedTools(
     sessionConfigSource: "runtime" as const,
     modelProvider: params.modelProvider,
     modelId: params.modelId,
+    webSearchModelSelection: params.webSearchModelSelection,
     modelHasVision: params.modelHasVision,
     requesterModel: params.requesterModel,
     pairedNodeComputerUse: params.pairedNodeComputerUse,

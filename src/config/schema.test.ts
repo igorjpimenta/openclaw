@@ -1,8 +1,8 @@
 // Covers canonical config schema defaults, validation, and sensitive redaction.
 import { setImmediate as nextTurn } from "node:timers/promises";
-import { queryObjects } from "node:v8";
 import { expectDefined } from "@openclaw/normalization-core";
 import { beforeAll, describe, expect, it } from "vitest";
+import { forceFullGc } from "../test-utils/retention.js";
 import { buildConfigSchemaCore, lookupConfigSchema, type PluginUiMetadata } from "./schema.js";
 import { asSchemaObject } from "./schema.shared.js";
 import { validateConfigObjectRaw } from "./validation.js";
@@ -47,6 +47,76 @@ describe("config schema", () => {
       { allow: [], automations: { unknown: true } },
     ]) {
       expect(acceptsTools({ gatewayPolicy })).toBe(false);
+    }
+  });
+
+  it("accepts custom tool profile definitions", () => {
+    expect(
+      acceptsTools({
+        profiles: {
+          "desk-operator": { base: "coding", allow: ["brayer_order_get"], deny: ["browser"] },
+        },
+      }),
+    ).toBe(true);
+    expect(acceptsTools({ profiles: { "read-only": { allow: ["read"] } } })).toBe(true);
+    for (const profiles of [
+      { coding: { allow: ["read"] } },
+      { "bad name": { allow: ["read"] } },
+      { "": { allow: ["read"] } },
+      { blank: {} },
+      { blank: { allow: ["", "  "], deny: [] } },
+      { discipline: { base: "minimal", allow: "read" } },
+      { discipline: { base: "desk-operator" } },
+    ]) {
+      expect(acceptsTools({ profiles })).toBe(false);
+    }
+  });
+
+  it("rejects empty tool profile references and whitespace-only profile entries", () => {
+    expect(acceptsTools({ profile: "" })).toBe(false);
+    expect(acceptsTools({ profile: "   " })).toBe(false);
+    const result = validateConfigObjectRaw({
+      agents: {
+        ownership: "explicit",
+        entries: { scout: { tools: { profile: "" } } },
+      },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(
+        result.issues.filter((issue) => issue.path === "agents.entries.scout.tools.profile"),
+      ).toHaveLength(1);
+      expect(result.issues.some((issue) => issue.message.includes("empty tool profile"))).toBe(
+        true,
+      );
+    }
+  });
+
+  it("rejects tool profile references to names that are not defined or built in", () => {
+    const result = validateConfigObjectRaw({
+      tools: {
+        profiles: { "desk-operator": { base: "coding", allow: ["brayer_order_get"] } },
+        profile: "desk-operator",
+      },
+      agents: {
+        ownership: "explicit",
+        entries: {
+          scout: { tools: { profile: "desk-operator" } },
+          ghost: { tools: { profile: "desk-oops" } },
+        },
+      },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(
+        result.issues.filter((issue) => issue.path === "agents.entries.ghost.tools.profile"),
+      ).toHaveLength(1);
+      expect(
+        result.issues.filter(
+          (issue) =>
+            issue.path === "tools.profile" || issue.path.startsWith("agents.entries.scout"),
+        ),
+      ).toHaveLength(0);
     }
   });
 
@@ -303,7 +373,7 @@ describe("config schema", () => {
     });
     const control = new WeakRef({});
     await nextTurn();
-    queryObjects(WeakRef);
+    forceFullGc();
     expect(control.deref()).toBeUndefined();
     expect(retired.deref() === undefined).toBe(true);
     expect(

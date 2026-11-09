@@ -56,6 +56,10 @@ export type MediaToolsConfig = {
 
 export type ToolProfileId = NonNullable<SchemaToolsConfig["profile"]>;
 
+export type ToolProfilesConfig = NonNullable<SchemaToolsConfig["profiles"]>;
+
+export type CustomToolProfileConfig = ToolProfilesConfig[string];
+
 export type ToolLoopDetectionConfig = NonNullable<SchemaToolsConfig["loopDetection"]>;
 
 export type ToolSearchConfig = NonNullable<SchemaToolsConfig["toolSearch"]>;
@@ -68,6 +72,8 @@ export type ToolAllowDenyPolicyConfig = NonNullable<z.input<typeof ToolPolicySch
 export type ToolPolicyConfig = ToolAllowDenyPolicyConfig & {
   /** Built-in profile used as the base policy before allow/deny merges. */
   profile?: ToolProfileId;
+  /** Provider/model exec ceiling (`tools.byProvider` only); tightens, never loosens. */
+  exec?: { mode?: ExecToolConfig["mode"] };
 };
 
 export type GroupToolPolicyConfig = ToolAllowDenyPolicyConfig;
